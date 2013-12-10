@@ -1,0 +1,19 @@
+<?php
+/**
+ * @file
+ *   This is general utility module which is used for many backend/frontend settgins
+ *   on views, nodes, content types etc.
+ */
+
+/**
+ * Implements _form_views_exposed_form_alter().
+ */
+function my_utility_form_views_exposed_form_alter(&$form, &$form_state, $form_id) {
+  $form['#submit'][] = '_custom_views_exposed_form_submit';
+}
+
+function _custom_views_exposed_form_submit($form, &$form_state) {
+  if (isset($form_state['values']['created']['value'])) {
+    $form_state['values']['created']['value'] = strtotime($form_state['values']['created']['value']);
+  }
+}
