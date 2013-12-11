@@ -10,4 +10,3 @@ features[menu_custom][] = main-menu
 features[menu_custom][] = menu-footer-menu
 features[menu_links][] = menu-footer-menu_about:node/17
 features[menu_links][] = menu-footer-menu_contact:node/18
-features[taxonomy][] = category
