@@ -1,0 +1,13 @@
+name = Menus
+description = This feature stores all menus.
+core = 7.x
+package = Features
+dependencies[] = features
+dependencies[] = menu
+dependencies[] = taxonomy
+features[features_api][] = api:2
+features[menu_custom][] = main-menu
+features[menu_custom][] = menu-footer-menu
+features[menu_links][] = menu-footer-menu_about:node/17
+features[menu_links][] = menu-footer-menu_contact:node/18
+features[taxonomy][] = category
