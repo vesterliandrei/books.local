@@ -557,3 +557,9 @@ $conf['404_fast_html'] = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML+RDFa 1.0//EN"
  * Remove the leading hash signs to disable.
  */
 # $conf['allow_authorize_operations'] = FALSE;
+
+// Include development settings if we aren't on production server
+if (!empty($_SERVER['PEYTZ_DEV']) || !empty($_SERVER['PEYTZ_VIRT'])) {
+  require_once 'settings.development.php';
+}
+
