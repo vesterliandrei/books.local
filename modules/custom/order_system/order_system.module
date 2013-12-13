@@ -1,0 +1,461 @@
+<?php
+/**
+ * @file
+ * Order system module file. Here is written main functionality.
+ */
+
+/**
+ * Implements hook_permission().
+ */
+function order_system_permission() {
+  return array(
+    'administer order system' => array(
+      'title' => t('Administer order system'),
+      'description' => t('Allows site administrator to manage order system.'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function order_system_menu() {
+  $items = array();
+
+  $items['admin/config/system/order_system'] = array(
+    'title' => 'Administer order system',
+    'description' => 'Here you can administer order system. View orders in details, Delete orders or print them.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('order_system_view_orders'),
+    'access arguments' => array('administer order system'),
+  );
+
+  $items['admin/config/system/order_system/view'] = array(
+    'title' => 'View Orders',
+    'description' => 'Here you can administer order system. View orders in details, Delete orders or print them.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('order_system_view_orders'),
+    'access arguments' => array('administer order system'),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => 1
+  );
+
+  $items['admin/config/system/order_system/email_template'] = array(
+    'title' => 'Manage email template',
+    'description' => 'Here you can administer order system. View orders in details, Delete orders or print them.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('order_system_email_template'),
+    'access arguments' => array('administer order system'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 2
+  );
+
+  $items['admin/config/system/order_system/content_types'] = array(
+    'title' => 'Manage content types',
+    'description' => 'Here you can administer order system. View orders in details, Delete orders or print them.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('order_system_content_types'),
+    'access arguments' => array('administer order system'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 3
+  );
+
+  return $items;
+}
+
+/**
+ * View orders table including all operations.
+ */
+function order_system_view_orders() {
+  $form = array();
+
+  $form['test'] = array(
+    '#markup' => 'test',
+    '#weight' => 1,
+  );
+
+  return $form;
+}
+
+/**
+ * Manage email template form.
+ */
+function order_system_email_template() {
+  $form = array();
+
+  $form['help_text'] = array(
+    '#markup' => t('Here you can change order confirmation email template using the form below.'),
+    '#weight' => 1,
+  );
+
+  $form['email_template_from'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Email from'),
+    '#default_value' => variable_get('order_system_email_template_from', ''),
+    '#weight' => 2,
+  );
+
+  $form['email_template_subject'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Email subject'),
+    '#default_value' => variable_get('order_system_email_template_subject', ''),
+    '#weight' => 3,
+  );
+
+  $form['email_template_body'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Email body'),
+    '#default_value' => variable_get('order_system_email_template_body', ''),
+    '#weight' => 4,
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save settings'),
+    '#weight' => 5,
+  );
+
+  return $form;
+}
+
+/**
+ * Validation handler for email template form.
+ */
+function order_system_email_template_validate($form, &$form_state) {
+  if (empty($form_state['values']['email_template_body'])) {
+    form_set_error('email_template_body', t('<em>!field_name</em> field is required.', array(
+      '!field_name' => t($form['email_template_body']['#title']),
+    )));
+  }
+
+  if (empty($form_state['values']['email_template_subject'])) {
+    form_set_error('email_template_subject', t('<em>!field_name</em> field is required.', array(
+      '!field_name' => t($form['email_template_subject']['#title']),
+    )));
+  }
+
+  if (empty($form_state['values']['email_template_from'])) {
+    form_set_error('email_template_from', t('<em>!field_name</em> field is required.', array(
+      '!field_name' => t($form['email_template_from']['#title']),
+    )));
+  }
+}
+
+/**
+ * Submit handler for email template form.
+ */
+function order_system_email_template_submit($form, &$form_state) {
+  variable_set(
+    'order_system_email_template_subject',
+    $form_state['values']['email_template_subject']
+  );
+  variable_set(
+    'order_system_email_template_body',
+    $form_state['values']['email_template_body']
+  );
+  variable_set(
+    'order_system_email_template_from',
+    $form_state['values']['email_template_from']
+  );
+
+  drupal_set_message(t('Configuration settings have been saved.'), 'status');
+}
+
+/**
+ * Manage which content types will be available as product.
+ */
+function order_system_content_types() {
+  $form = array();
+
+  $form['help_text'] = array(
+    '#markup' => t(
+      'Here you can select which content type will be available as product. ' .
+      'Selected content types will contain an additional field "Price" and custom ' .
+      'widget, add to card box on node view display.'
+    ),
+  );
+
+  $content_types = node_type_get_types();
+  $options = array();
+
+  foreach ($content_types as $type => $content_type) {
+    $options[$type] = $content_type->name;
+  }
+
+  $form['content_types'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Available Content types'),
+    '#options' => $options,
+    '#default_value' => variable_get('order_system_content_types', array()),
+    '#weight' => 2,
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save configuration'),
+    '#weight' => 3,
+  );
+
+  return $form;
+}
+
+/**
+ * Submit handler for manage content types for order system form.
+ */
+function order_system_content_types_submit($form, &$form_state) {
+  variable_set('order_system_content_types', $form_state['values']['content_types']);
+  $field_name = 'field_price';
+  $types = array();
+
+  // Check if the field is already created.
+  if(!field_info_field($field_name)) {
+    $field = array(
+      'field_name' => $field_name,
+      'type' => 'text',
+      'cardinality' => 1,
+      'active' => 1
+    );
+    field_create_field($field);
+  }
+  // Get field info
+  $info_field = field_info_field($field_name);
+
+  // Create field instance
+  $field_instance = array(
+    'field_name' => $field_name,
+    'entity_type' => 'node',
+    'label' => t('Price'),
+    'required' => TRUE,
+    'description' => t('This is product\'s price'),
+    'widget' => array(
+      'type' => 'textfield',
+    ),
+  );
+
+  foreach ($form_state['values']['content_types'] as $content_type) {
+    if ($content_type) {
+      // Check if current content type contains Price field
+      if (!in_array($content_type, $info_field['bundles']['node'])) {
+        $field_instance['bundle'] = $content_type;
+        field_create_instance($field_instance);
+      }
+      $types[] = $content_type;
+    }
+  }
+
+  drupal_set_message(
+    t('Configuration settings have been saved. ' .
+      'The content types: <em>' . implode(', ', $types) . '</em> contain generated Price field.'),
+    'status'
+  );
+}
+
+/**
+ * Implements hook_block_info().
+ */
+function order_system_block_info() {
+  $block = array();
+
+  $block['order_system_add_to_cart'] = array(
+    'info' => t('Add to cart block.'),
+    'cache' => DRUPAL_NO_CACHE,
+  );
+
+  $block['order_system_cart_page'] = array(
+    'info' => t('View cart.'),
+    'cache' => DRUPAL_NO_CACHE,
+  );
+
+  return $block;
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function order_system_block_view($delta) {
+  global $user;
+  global $language;
+
+  $block = array();
+  if ($delta == 'order_system_add_to_cart') {
+    $content_types = variable_get('order_system_content_types', array());
+
+    if (arg(1)) {
+      $nid = arg(1);
+      $node = node_load($nid);
+    }
+
+    foreach (array_values($content_types) as $type) {
+      if ($node->type === $type && $user->uid) {
+        $form = drupal_get_form('order_system_add_to_cart_form');
+        $block['subject'] = t('Add to card');
+        $block['content'] = drupal_render($form);
+      }
+    }
+  }
+  elseif ($delta == 'order_system_cart_page') {
+    if ($user->uid) {
+      $links = array();
+      $links['view'] = array(
+        'href' => url('cart/view', array('absolute' => TRUE)),
+        'title' => t('View cart'),
+        'language' => $language,
+        'attributes' => array('class' => array('view-cart')),
+      );
+      $block['subject'] = t('View cart');
+      $block['content'] = theme('links', array('links' => $links));
+    }
+  }
+  return $block;
+}
+/**
+ * Add to cart form.
+ * @return
+ * Returns add to cart form
+ */
+function order_system_add_to_cart_form($form, &$form_state) {
+  global $user;
+
+  $form = array();
+  $form['#cache'] = TRUE;
+  $nid = arg(1);
+  $product = _order_system_get_product($nid, $user->uid); // Get product info
+
+  $form['add_to_cart'] = array(
+    '#type' => 'submit',
+    '#value' => t('Add to cart'),
+    '#ajax' => array(
+      'callback' => '_order_system_cart_item_process',
+      'wrapper' => 'add-to-cart-wrapper',
+      'effect' => 'fade',
+      'method' => 'replace'
+    ),
+    '#id' => 'add-to-cart-bnt',
+    '#weight' => 1,
+  );
+
+  $form['remove_from_to_cart'] = array(
+    '#type' => 'submit',
+    '#value' => t('Remove from cart'),
+    '#ajax' => array(
+      'callback' => '_order_system_cart_item_process',
+      'wrapper' => 'add-to-cart-wrapper',
+      'effect' => 'fade',
+      'method' => 'replace',
+    ),
+    '#id' => 'remove-from-cart-bnt',
+    '#weight' => 2,
+  );
+
+  $form['add_to_cart_info'] = array(
+    '#prefix' => '<div id="add-to-cart-wrapper">',
+    '#suffix' => '</div>',
+    '#markup' => '<p class="add-to-cart-info">' .
+      t('!items items added to card.',
+      array('!items' => ($product['ammount'] ? $product['ammount'] : 0))) . '</p>',
+    '#id' => 'add-to-cart-bnt',
+    '#weight' => 3,
+  );
+
+  $form['nid'] = array(
+    '#type' => 'hidden',
+    '#value' => arg(1)
+  );
+
+  return $form;
+}
+
+/**
+ * Order system ajax callback add to cart process.
+ */
+function _order_system_cart_item_process(&$form, &$form_state) {
+  return _order_system_db_process($form, $form_state['values']);
+}
+
+/**
+ * Get product info from active orders table.
+ * @param Integer $nid
+ *   Node id
+ * @param Integer $uid
+ *   User id
+ * @return Array
+ *   Return an array with all order data from active orders table
+ */
+function _order_system_get_product($nid, $uid) {
+  // Get current node added to cart by current user in active orders table (if exists).
+  $node_record = db_select('order_system_active_orders', 'osao')
+    ->fields('osao')
+    ->condition('nid', $nid, '=')
+    ->condition('uid', $uid, '=')
+    ->execute()
+    ->fetchAssoc();
+
+  return (isset($node_record) ? $node_record : array());
+}
+
+/**
+ * Database process. Inserting orders into db.
+ * @param Array $form_values
+ * Submitted form values
+ */
+function _order_system_db_process(&$form, $form_values) {
+  if (isset($form_values)) {
+    global $user;
+    $product = _order_system_get_product($form_values['nid'], $user->uid); // Get product info
+    $new_ammount = ($product['ammount'] ? $product['ammount'] : 0);
+    $op = $form_values['op'];
+
+    // Check which button was clicked Add/Remove from cart
+    if ($op == $form_values['add_to_cart']) {
+      if ($new_ammount) {
+        // Increment ammount for current product added to cart
+        db_update('order_system_active_orders')
+          ->fields(array('ammount' => $new_ammount+1,))
+          ->condition('nid', $form_values['nid'], '=')
+          ->condition('uid', $user->uid, '=')
+          ->execute();
+        $new_ammount++;
+      }
+      else {
+        // Insert current product added to cart into db
+        db_insert('order_system_active_orders')
+          ->fields(array('timestamp', 'uid', 'nid', 'ammount'))
+          ->values(array(
+            'timestamp' => time(),
+            'uid' => $user->uid,
+            'nid' => $form_values['nid'],
+            'ammount' => 1,
+          ))
+          ->execute();
+        $new_ammount = 1;
+      }
+    }
+    else {
+      // Decrement ammount for current added to cart product
+      if ($new_ammount && $new_ammount > 1) {
+        db_update('order_system_active_orders')
+          ->fields(array(
+            'ammount' => $new_ammount-1,
+          ))
+          ->condition('nid', $form_values['nid'], '=')
+          ->condition('uid', $user->uid, '=')
+          ->execute();
+        $new_ammount--;
+      }
+      elseif($new_ammount == 1) {
+        db_delete('order_system_active_orders')
+          ->condition('nid', $form_values['nid'])
+          ->execute();
+        $new_ammount = 0;
+      }
+    }
+    $form['add_to_cart_info']['#markup'] = '<p class="add-to-cart-info">' .
+      t('!items items added to card.', array('!items' => $new_ammount)) . '</p>';
+  }
+  //return $form['add_to_cart_info'];
+  $commands = array(
+    ajax_command_replace('#add-to-cart-wrapper', render($form['add_to_cart_info'])),
+  );
+
+  return array('#type' => 'ajax', '#commands' => $commands);
+}
