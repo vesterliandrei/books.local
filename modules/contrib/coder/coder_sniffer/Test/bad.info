@@ -8,9 +8,10 @@ files[] = bad.tpl.php
 ; Drupal's module UI.
 hidden = TRUE
 
-; Information added by drupal.org packaging script on 2013-08-11
+
+; Information added by drush on 2013-12-16
 version = "7.x-2.0"
 core = "7.x"
 project = "coder"
-datestamp = "1376244716"
+datestamp = "1387186176"
 

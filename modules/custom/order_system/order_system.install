@@ -10,25 +10,18 @@
 function order_system_schema() {
   $schema = array();
 
-  // Declare module tables with all fields and primary keys
-  $schema['order_system_active_orders'] = array(
-    'description' => 'Stores user\' all active orders.',
+  // Formate order item table schema.
+  $schema['order_system_order_item'] = array(
+    'description' => 'Stores all order items.',
     'fields' => array(
-      'id' => array(
-        'description' => t('The primary identifier for an order.'),
+      'oiid' => array(
+        'description' => t('The primary identifier for an order item.'),
         'type' => 'serial',
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
-      'timestamp' => array(
-        'description' => 'Order placed timestamp.',
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'uid' => array(
-        'description' => 'The user id who placed the order.',
+      'oid' => array(
+        'description' => 'Foreign key order id.',
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
@@ -41,49 +34,50 @@ function order_system_schema() {
         'not null' => TRUE,
         'default' => 0,
       ),
-      'ammount' => array(
-        'description' => 'The ammount ordered.',
+      'amount' => array(
+        'description' => 'The ordered amount of current product.',
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
         'default' => 0,
       ),
     ),
-    'primary key' => array('id'),
+    'primary key' => array('oiid'),
   );
 
-  $schema['order_system_placed_orders'] = array(
-    'description' => 'Stores user\' all placed orders.',
+  // Formate orders table schema.
+  $schema['order_system_orders'] = array(
+    'description' => 'Stores all registered orders.',
     'fields' => array(
-      'id' => array(
+      'oid' => array(
         'description' => t('The primary identifier for an order.'),
         'type' => 'serial',
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
-      'timestamp' => array(
+      'created' => array(
+        'description' => 'Order created timestamp.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'updated' => array(
+        'description' => 'Order updated timestamp.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'placed' => array(
         'description' => 'Order placed timestamp.',
         'type' => 'int',
         'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
+        'not null' => FALSE,
+        'default' => NULL,
       ),
       'uid' => array(
         'description' => 'The user id who placed the order.',
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'nid' => array(
-        'description' => 'The node id which was ordered as a product.',
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'ammount' => array(
-        'description' => 'The ammount ordered.',
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
@@ -96,8 +90,15 @@ function order_system_schema() {
         'default' => 0,
         'size' => 'tiny',
       ),
+      'order_state' => array(
+        'description' => 'A boolean indicating order state.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'size' => 'tiny',
+      ),
     ),
-    'primary key' => array('id'),
+    'primary key' => array('oid'),
   );
 
   return $schema;
@@ -107,14 +108,27 @@ function order_system_schema() {
  * Implements hook_install().
  */
 function order_system_install() {
-  // Add module variables for email notification.
-  variable_set('order_system_email_template_subject', t('Order notification'));
-  variable_set('order_system_email_template_body', t('Order notification body'));
-  variable_set('order_system_email_template_from',
-    t('Order notification from !sitename',
-      array('!sitename' => variable_get('site_name'))
-    )
+  global $user;
+
+  // Prepare mail body
+  $mail_body =
+    'Dear !username, <br />' .
+    'Thank you for placing your order on !sitename.<br />' .
+    'This email is to confirm your recent order.<br />' .
+    'Placed date: !date.<br />' .
+    '-- !sitename Team --';
+
+  // Prepare mail notification template which includes subject and body.
+  $mail_notification_template = array(
+    'subject' => '!from order notification',
+    'body' => $mail_body
   );
+
+  // Order system mail notification template.
+  variable_set('order_system_mail_notification_template', $mail_notification_template);
+
+  // Content types which are set as products.
+  variable_set('order_system_content_types', array());
 }
 
 /**
@@ -122,8 +136,6 @@ function order_system_install() {
  */
 function order_system_uninstall() {
   // Remove module variables after uninstall it.
-  variable_del('order_system_email_template_subject');
-  variable_del('order_system_email_template_body');
-  variable_del('order_system_email_template_from');
+  variable_del('order_system_mail_notification_template');
   variable_del('order_system_content_types');
 }

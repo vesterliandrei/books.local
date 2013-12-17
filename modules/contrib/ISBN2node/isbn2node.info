@@ -8,9 +8,10 @@ configure = admin/config/content/isbn2node
 
 
 
-; Information added by drupal.org packaging script on 2011-06-09
+
+; Information added by drush on 2013-12-16
 version = "7.x-1.3"
 core = "7.x"
 project = "ISBN2node"
-datestamp = "1307619116"
+datestamp = "1387186160"
 

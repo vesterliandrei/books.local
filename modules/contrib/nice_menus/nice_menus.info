@@ -4,9 +4,10 @@ dependencies[] = menu
 core = 7.x
 configure = admin/config/user-interface/nice_menus
 
-; Information added by drupal.org packaging script on 2013-07-16
+
+; Information added by drush on 2013-12-16
 version = "7.x-2.5"
 core = "7.x"
 project = "nice_menus"
-datestamp = "1373943668"
+datestamp = "1387186138"
 

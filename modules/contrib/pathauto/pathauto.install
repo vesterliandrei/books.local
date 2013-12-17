@@ -164,8 +164,10 @@ function pathauto_update_7005() {
       variable_set($variable, $pattern);
     }
   }
+
   return 'Your Pathauto taxonomy and forum patterns have been corrected. You may wish to regenerate your taxonomy and forum term URL aliases.';
 }
+
 /**
  * Build a list of Drupal 6 tokens and their Drupal 7 token names.
  */

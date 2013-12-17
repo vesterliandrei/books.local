@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Plugin to provide access control based upon node type.
+ * Plugin to provide access control based upon language.
  */
 
 /**
@@ -11,13 +11,14 @@
  */
 if (module_exists('locale')) {
   $plugin = array(
-    'title' => t("User: language"),
-    'description' => t('Control access by the language the user or site currently uses.'),
+    'title' => t('Language'),
+    'description' => t('Control access by the language the user or site currently uses, or an existing language context.'),
     'callback' => 'ctools_site_language_ctools_access_check',
     'default' => array('language' => array()),
     'settings form' => 'ctools_site_language_ctools_access_settings',
     'settings form submit' => 'ctools_site_language_ctools_access_settings_submit',
     'summary' => 'ctools_site_language_ctools_access_summary',
+    'required context' => new ctools_context_optional(t('Language Source'), 'language'),
   );
 }
 
@@ -30,10 +31,10 @@ function ctools_site_language_ctools_access_settings($form, &$form_state, $conf)
   );
   $options = array_merge($options, locale_language_list());
   $form['settings']['language'] = array(
-    '#title' => t('Language'),
+    '#title' => t('Language to compare with'),
     '#type' => 'checkboxes',
     '#options' => $options,
-    '#description' => t('Pass only if the current site language is one of the selected languages.'),
+    '#description' => t('Pass only if the current site language (or chosen language source) is one of the selected languages.'),
     '#default_value' => $conf['language'],
   );
   return $form;
@@ -43,7 +44,18 @@ function ctools_site_language_ctools_access_settings($form, &$form_state, $conf)
  * Check for access.
  */
 function ctools_site_language_ctools_access_check($conf, $context) {
-  global $language;
+  // We use the site's current language if there is no specified languaged context.
+  if (!$context->is_type('language')) {
+    global $language;
+  }
+
+  elseif (isset($context) && !empty($context->data)) {
+    $language = $context->data;
+  }
+
+  else {
+    return FALSE;
+  }
 
   // Specialcase: If 'default' is checked, return TRUE if the default site language
   // matches the node language.
@@ -64,6 +76,8 @@ function ctools_site_language_ctools_access_check($conf, $context) {
  * Provide a summary description based upon the checked site_languages.
  */
 function ctools_site_language_ctools_access_summary($conf, $context) {
+  $language_identifier = $context->is_type('language') ? $context->get_identifier() : t('Site language');
+
   $languages = array(
     'default' => t('Default site language'),
   );
@@ -79,9 +93,9 @@ function ctools_site_language_ctools_access_summary($conf, $context) {
   }
 
   if (empty($names)) {
-    return t('Site language is any language');
+    return t('@language_identifier is any language', array('@language_identifier' => $language_identifier));
   }
 
-  return format_plural(count($names), 'Site language is "@languages"', 'Site language is one of "@languages"', array('@languages' => implode(', ', $names)));
+  return format_plural(count($names), '@language_identifier is "@languages"', '@language_identifier is one of "@languages"', array('@language_identifier' => $language_identifier, '@languages' => implode(', ', $names)));
 }
 
