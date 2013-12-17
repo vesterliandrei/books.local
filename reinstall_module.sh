@@ -1,0 +1,1 @@
+drush dis ${1} -y;drush pm-uninstall ${1} -y;drush en ${1} -y;
