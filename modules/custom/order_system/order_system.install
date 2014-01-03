@@ -121,7 +121,8 @@ function order_system_install() {
   // Prepare mail notification template which includes subject and body.
   $mail_notification_template = array(
     'subject' => '!from order notification',
-    'body' => $mail_body
+    'body' => $mail_body,
+    'notify' => 1,
   );
 
   // Order system mail notification template.

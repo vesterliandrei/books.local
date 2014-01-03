@@ -41,7 +41,7 @@ function order_system_menu() {
     'page arguments' => array('order_system_view_orders'),
     'access arguments' => array('administer order system'),
     'type' => MENU_DEFAULT_LOCAL_TASK,
-    'weight' => 1
+    'weight' => 1,
   );
 
   $items['admin/config/system/order_system/email_template'] = array(
@@ -51,7 +51,7 @@ function order_system_menu() {
     'page arguments' => array('order_system_mail_template'),
     'access arguments' => array('administer order system'),
     'type' => MENU_LOCAL_TASK,
-    'weight' => 2
+    'weight' => 2,
   );
 
   $items['admin/config/system/order_system/content_types'] = array(
@@ -61,10 +61,208 @@ function order_system_menu() {
     'page arguments' => array('order_system_content_types'),
     'access arguments' => array('administer order system'),
     'type' => MENU_LOCAL_TASK,
-    'weight' => 3
+    'weight' => 3,
+  );
+
+  $items['cart/view'] = array(
+    'title' => 'Cart details',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('order_system_cart_view'),
+    'access arguments' => array('create an order'),
+    'file' => 'order_system.mail.inc',
+    'file path' => drupal_get_path('module', 'order_system'),
   );
 
   return $items;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function order_system_theme($existing, $type, $theme, $path) {
+  return array(
+    'cart_view_table' => array('render element' => 'element'),
+    'view_orders_table' => array('render element' => 'element'),
+  );
+}
+
+/**
+ *
+ * Theme view cart details table.
+ */
+function theme_cart_view_table($vars) {
+  $element = $vars['element'];
+  $img_path = drupal_get_path('module', 'order_system') . '/style/img/';
+
+  $op =
+    '<div class="operations">' .
+      '<img class="increase" src="/' . $img_path . '/increase.png"/>' .
+      '<img class="decrease" src="/' . $img_path . '/decrease.png"/>' .
+      '<img class="remove" src="/' . $img_path . '/remove.png"/>' .
+    '</div>';
+
+  // Return table theme in case there are order items in current order.
+  if (count(element_children($element)) > 2) {
+    $rows = array();
+    $total_amount = 0;
+    foreach (element_children($element) as $key) {
+      if ($key != 'update' && $key != 'place_order') {
+        $rows[] = array(
+          array('data' => $element[$key]['title']['#value']),
+          array('data' => render($element[$key]['amount']) . $op)
+        );
+        $total_amount += $element[$key]['amount']['#value'];
+      }
+    }
+    $rows[] = array(
+      array('data' => t('Total') . ': ' . $total_amount),
+      array('data' => render($element['place_order'])),
+    );
+    $rows[] = array(
+      array('data' => render($element['update']), 'colspan' => '2'),
+    );
+
+    $header = array(t('Product title'), t('Amount'));
+    return theme('table', array('header' => $header, 'rows' => $rows));
+  }
+  else {
+    // Return empty help text in case there are no items in the current order.
+    return render($element['empty_text']);
+  }
+}
+
+function theme_view_orders_table($vars) {
+
+}
+
+/**
+ * View cart details form.
+ */
+function order_system_cart_view($form, &$form_state) {
+  global $user;
+
+  // Load module's css/js files.
+  drupal_add_css(drupal_get_path('module', 'order_system') . '/style/css/order_system.css', 'file');
+
+  // Ajax submit update button process.
+  if (isset($form_state['values'])) {
+    // Get order id from cliecked button extra data.
+    $oid = $form_state['clicked_button']['#extra_data']['oid'];
+
+    // Place order button was clicked
+    if ($form_state['clicked_button']['#name'] == 'place_order') {
+      $fields = array('order_state' => 1, 'placed' => time());
+
+      $mail_notification_template = variable_get('order_system_mail_notification_template');
+
+      if ($mail_notification_template['notify']) {
+        order_system_mail_send();
+      }
+
+      db_update('order_system_orders')
+        ->fields($fields)
+        ->condition('oid', $oid, '=')->execute();
+
+      drupal_set_message(t('Order !order_number was successfuly placed !',
+        array('!order_number' => $oid)));
+    }
+    else {
+      // Update button was clicked
+      foreach ($form_state['values']['order'] as $key => $item) {
+        if ($item['amount']) {
+          db_update('order_system_order_item')
+            ->fields(array('amount' => $item['amount']))
+            ->condition('oiid', $key, '=')->execute();
+
+          db_update('order_system_orders')
+            ->fields(array('updated' => time()))
+            ->condition('oid', $oid, '=')->execute();
+        }
+        else {
+          db_delete('order_system_order_item')
+            ->condition('oiid', $key, '=')->execute();
+        }
+      }
+    }
+  }
+  $order = _order_system_get_unplaced_order($user->uid); // Get full unplaced order.
+
+  $form = array();
+  $form['order'] = array(
+    '#prefix' => '<div id="cart-wrapper">',
+    '#suffix' => '</div>',
+    '#tree' => TRUE,
+    '#theme' => 'cart_view_table'
+  );
+
+  if (!empty($order['items'])) {
+    foreach ($order['items'] as $order_item) {
+      // Get product object
+      $product = node_load($order_item->nid);
+      $form['order'][$order_item->oiid] = array(
+        '#type' => 'fieldset',
+        '#collapsible' => FALSE,
+        '#default_value' => $order_item->amount,
+        'amount' => array(
+          '#type' => 'textfield',
+          '#default_value' => $order_item->amount,
+          '#size' => 3,
+        ),
+        'title' => array(
+          '#type' => 'value',
+          '#value' => $product->title
+        ),
+      );
+    }
+
+    $form['order']['place_order'] = array(
+      '#type' => 'button',
+      '#name' => 'place_order',
+      '#value' => t('Place order'),
+      '#extra_data' => array('oid' => $order_item->oid),
+      '#ajax' => array(
+        'callback' => '_order_system_update_amount',
+        'wrapper' => 'cart-wrapper',
+      ),
+    );
+
+    $form['order']['update'] = array(
+      '#type' => 'button',
+      '#attributes' => array('class' => array('element-invisible'),),
+      '#value' => t('Update'),
+      '#name' => 'update',
+      '#extra_data' => array('oid' => $order_item->oid),
+      '#ajax' => array(
+        'callback' => '_order_system_update_amount',
+        'wrapper' => 'cart-wrapper',
+      ),
+    );
+
+    $form['#attached']['js'] = array(
+      array(
+        'type'  => 'file',
+        'data' => drupal_get_path('module', 'order_system') . '/order_system.js',
+      ),
+    );
+  }
+  else {
+    // Return empty text in case there is no active order for current user.
+    $empty_text = t('There are no products added to your cart.');
+    $form['order']['empty_text'] = array('#markup' => $empty_text);
+  }
+
+  return $form;
+}
+
+/**
+ * Update order item amount ajax callback process.
+ */
+function _order_system_update_amount($form, &$form_state) {
+  $commands = array();
+  $commands[] = ajax_command_replace('#cart-wrapper', render($form['order']));
+	$commands[] = array('command' => 'cart_page_operations');
+
+	return array('#type' => 'ajax', '#commands' => $commands);
 }
 
 /**
@@ -72,11 +270,69 @@ function order_system_menu() {
  */
 function order_system_view_orders() {
   $form = array();
-
-  $form['test'] = array(
-    '#markup' => 'test',
-    '#weight' => 1,
+  $form['view_orders'] = array(
+    '#prefix' => '<div id="orders-wrapper">',
+    '#suffix' => '</div>',
+    '#tree' => TRUE,
+    '#theme' => 'view_orders_table'
   );
+  $order = _order_system_get_orders(); // Get full unplaced order.
+
+  if (!empty($order['items'])) {
+    foreach ($order['items'] as $order_item) {
+      // Get product object
+      $product = node_load($order_item->nid);
+      $form['order'][$order_item->oiid] = array(
+        '#type' => 'fieldset',
+        '#collapsible' => FALSE,
+        '#default_value' => $order_item->amount,
+        'amount' => array(
+          '#type' => 'textfield',
+          '#default_value' => $order_item->amount,
+          '#size' => 3,
+        ),
+        'title' => array(
+          '#type' => 'value',
+          '#value' => $product->title
+        ),
+      );
+    }
+
+    $form['order']['place_order'] = array(
+      '#type' => 'button',
+      '#name' => 'place_order',
+      '#value' => t('Place order'),
+      '#extra_data' => array('oid' => $order_item->oid),
+      '#ajax' => array(
+        'callback' => '_order_system_update_amount',
+        'wrapper' => 'cart-wrapper',
+      ),
+    );
+
+    $form['order']['update'] = array(
+      '#type' => 'button',
+      '#attributes' => array('class' => array('element-invisible'),),
+      '#value' => t('Update'),
+      '#name' => 'update',
+      '#extra_data' => array('oid' => $order_item->oid),
+      '#ajax' => array(
+        'callback' => '_order_system_update_amount',
+        'wrapper' => 'cart-wrapper',
+      ),
+    );
+
+    $form['#attached']['js'] = array(
+      array(
+        'type'  => 'file',
+        'data' => drupal_get_path('module', 'order_system') . '/order_system.js',
+      ),
+    );
+  }
+  else {
+    // Return empty text in case there is no active order for current user.
+    $empty_text = t('There are no products added to your cart.');
+    $form['order']['empty_text'] = array('#markup' => $empty_text);
+  }
 
   return $form;
 }
@@ -113,10 +369,19 @@ function order_system_mail_template() {
     '#weight' => 3,
   );
 
+  $description = t('Check this option in case you want to send an email notification for users who placed an order.');
+  $form['mail_template_notify'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Email notify'),
+    '#description' => $description,
+    '#default_value' => $mail_notification_template['notify'],
+    '#weight' => 4,
+  );
+
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Save settings'),
-    '#weight' => 4,
+    '#weight' => 5,
   );
 
   return $form;
@@ -130,6 +395,7 @@ function order_system_mail_template_submit($form, &$form_state) {
   variable_set('order_system_mail_notification_template', array(
     'subject' => $form_state['values']['mail_template_subject'],
     'body' => $form_state['values']['mail_template_body'],
+    'notify' => $form_state['values']['mail_template_notify'],
   ));
 
   drupal_set_message(t('Configuration settings have been saved.'));
@@ -268,9 +534,10 @@ function order_system_block_view($delta) {
   // Get all user's permissions.
   $permissions = user_role_permissions($user->roles);
   foreach ($permissions as $perm) {
-    // Check if current user has permission to create an order.
+    $perm = array_keys($perm);
+    // Check if current user has permission to create an order, if not hide block.
     if (!in_array('create an order', $perm)) {
-      exit;
+      return;
     }
   }
 
@@ -292,16 +559,8 @@ function order_system_block_view($delta) {
     }
   }
   elseif ($delta == 'order_system_cart_info') {
-    global $user;
-
     // Get all items amount added to user's cart.
     $order = _order_system_get_unplaced_order($user->uid);
-    $items = 0;
-    if (!empty($order)) {
-      foreach ($order as $order_item) {
-        $items += $order_item->amount;
-      }
-    }
 
     $links = array();
     $links['view'] = array(
@@ -311,11 +570,11 @@ function order_system_block_view($delta) {
       'attributes' => array('class' => array('view-cart')),
     );
     $text = t('There are !items items added in your cart.', array(
-      '!items' => $items
+      '!items' => $order['total_amount']
     ));
     $block['subject'] = t('Cart details');
     $block['content'] = theme('links', array('links' => $links)) .
-      '<div id="view-cart-details-wrapper">' . $text . '<div>';
+      '<div id="view-cart-details-wrapper"><p>' . $text . '</p><div>';
   }
 
   return $block;
@@ -330,62 +589,54 @@ function order_system_add_to_cart_form($form, &$form_state) {
   global $user;
 
   $form = array();
-  $nid = arg(1);
   $order = _order_system_get_unplaced_order($user->uid); // Get full unplaced order.
 
-  if (!empty($order)) {
-    foreach ($order as $order_item) {
-      $form['oid'] = array(
-        '#type' => 'hidden',
-        '#value' => $order_item->oid
-      );
+  // Formate form hidden order data.
+  $form['total_amount'] = array(
+    '#type' => 'value',
+    '#value' => $order['total_amount'],
+  );
 
-      if ($order_item->nid == $nid) {
-        $amount = $order_item->amount;
-
-        $form['oiid'] = array(
-          '#type' => 'hidden',
-          '#value' => $order_item->oiid
-        );
-
-        $form['amount'] = array(
-          '#type' => 'hidden',
-          '#value' => $order_item->amount
-        );
-      }
-    }
-  }
+  $form['nid'] = array(
+    '#type' => 'value',
+    '#value' => !isset($form_state['values']) ? arg(1) : $form_state['values']['nid'],
+  );
 
   $form['add_to_cart'] = array(
-    '#type' => 'submit',
+    '#type' => 'button',
     '#value' => t('Add to cart'),
     '#ajax' => array(
       'callback' => '_order_system_cart_item_process',
-      'wrapper' => 'add-to-cart-wrapper',
-      'effect' => 'fade',
-      'method' => 'replace'
+      'wrapper' => 'view-cart-details-wrapper',
     ),
-    '#id' => 'add-to-cart-bnt',
     '#weight' => 1,
   );
 
   $form['remove_from_to_cart'] = array(
-    '#type' => 'submit',
+    '#type' => 'button',
     '#value' => t('Remove from cart'),
     '#ajax' => array(
       'callback' => '_order_system_cart_item_process',
-      'wrapper' => 'add-to-cart-wrapper',
-      'effect' => 'fade',
-      'method' => 'replace',
+      'wrapper' => 'view-cart-details-wrapper',
     ),
-    '#id' => 'remove-from-cart-bnt',
     '#weight' => 2,
   );
 
-  $form['nid'] = array(
-    '#type' => 'hidden',
-    '#value' => $nid
-  );
+  // Ajax form submit process.
+  if (isset($form_state['values'])) {
+    $data = $form_state['values'];
+    $data['oid'] = $order['oid'];
+
+    if (!empty($order['items'])) {
+      foreach ($order['items'] as $order_item) {
+        if ($order_item->nid == $data['nid']) {
+          $data['oiid'] = $order_item->oiid;
+          $data['amount'] = $order_item->amount;
+        }
+      }
+    }
+    _order_system_db_process($data);
+  }
 
   return $form;
 }
@@ -393,9 +644,18 @@ function order_system_add_to_cart_form($form, &$form_state) {
 /**
  * Order system ajax callback add to cart process.
  */
-function _order_system_cart_item_process(&$form, &$form_state) {
-  $form_state['rebuild'] = TRUE;
-  return _order_system_db_process($form_state['values']);
+function _order_system_cart_item_process($form, $form_state) {
+  global $user;
+
+  $order = _order_system_get_unplaced_order($user->uid); // Get full unplaced order.
+  $cart_info = '<div id="view-cart-details-wrapper"><p>'.
+    t('There are !items items added in your cart.',
+    array ('!items' => $order['total_amount'])) . '</p></div>';
+
+  $commands = array(
+    ajax_command_replace('#view-cart-details-wrapper', $cart_info),
+  );
+  return array('#type' => 'ajax', '#commands' => $commands);
 }
 
 /**
@@ -406,94 +666,88 @@ function _order_system_cart_item_process(&$form, &$form_state) {
  *   Return an array with all order data from active orders table
  */
 function _order_system_get_unplaced_order($uid) {
+  $result = array('oid' => 0, 'total_amount' => 0, 'items' => array());
+
   // Get unplaced order added by current user (if exists).
   $order = db_select('order_system_orders', 'oso');
-  $order->leftJoin('order_system_order_item', 'osoi', 'osoi.oid = oso.oid');
+  $order->Join('order_system_order_item', 'osoi', 'osoi.oid = oso.oid');
   $order
     ->fields('oso', array('oid', 'uid'))
     ->fields('osoi', array('oiid', 'nid', 'amount'))
     ->condition('oso.uid', $uid, '=')
     ->condition('oso.order_state', 0, '=');
-  $result = $order->execute()->fetchAll();
+  $order = $order->execute()->fetchAll();
 
-  return $result ? $result : array();
+  if (!empty($order)) {
+    $result['oid'] = $order[0]->oid;
+    foreach ($order as $order_item) {
+      $result['items'][] = $order_item;
+      $result['total_amount'] += $order_item->amount;
+    }
+  }
+
+  return $result;
 }
 
 /**
  * Database process. Inserting orders into db.
  * @param Array $form_values
- * Submitted form values
+ *   Submitted form values form ajax callback
  */
 function _order_system_db_process($form_values) {
   if (isset($form_values)) {
     global $user;
 
-    $new_amount = 0;
-    if (isset($form_values['oid'])) {
-      $new_amount = $form_values['amount']; // Get current amount.
-      $order_item_id = $form_values['oiid']; // Get order item id.
-      $order_id = $form_values['oid']; // Get order id.
-    }
-    $nid = $form_values['nid']; // Get product id.
+    $amount = $form_values['amount']; // Get current amount.
+    $oiid = $form_values['oiid'];     // Get order item id.
+    $oid = $form_values['oid'];       // Get order id.
+    $nid = $form_values['nid'];       // Get product id (node id).
 
-    if ($form_values['op'] == $form_values['add_to_cart']) { // "Add to cart" button was clicked
-      if ($new_amount) {
-        // Increment amount for current product added to cart.
-        $new_amount++;
-        db_update('order_system_order_item')
-          ->fields(array('amount' => $new_amount))
-          ->condition('oiid', $order_item_id, '=')
-          ->execute();
+    // "Add to cart" button was clicked
+    if ($form_values['op'] == $form_values['add_to_cart']) {
+      // Check if order was created.
+      if ($oid) {
+        if ($amount) {
+          // Increment amount for current product added to cart.
+          db_update('order_system_order_item')
+            ->fields(array('amount' => $amount+1))
+            ->condition('oiid', $oiid, '=')->execute();
+
+          db_update('order_system_orders')
+            ->fields(array('updated' => time()))
+            ->condition('oid', $oid, '=')->execute();
+        }
+        else {
+          db_insert('order_system_order_item')
+            ->fields(array('oid' => $oid, 'nid' => $nid, 'amount' => 1))->execute();
+        }
       }
       else {
-        $new_amount = 1;
-        if (!isset($order_id)) {
-          // Insert new order into db
-          $order_id = db_insert('order_system_orders')
-            ->fields(array(
-              'uid' => $user->uid,
-              'created' => time(),
-              'updated' => time(),
-            ))
-            ->execute();
-        }
-        // Insert order item into current order.
+        // Order is not created yet. Add new one with an item.
+        $oid = db_insert('order_system_orders')
+          ->fields(array('uid' => $user->uid, 'created' => time(), 'updated' => time()))->execute();
+
         db_insert('order_system_order_item')
-          ->fields(array(
-            'oid' => $order_id,
-            'nid' => $nid,
-            'amount' => $new_amount,
-          ))
-        ->execute();
+          ->fields(array('oid' => $oid, 'nid' => $nid, 'amount' => 1))->execute();
       }
     }
     else { // "Remove from cart" button was clicked
-      // Decrement ammount for current added to cart product
-      if ($new_amount && $new_amount > 1) {
-        db_update('order_system_order_item')
-          ->fields(array('amount' => $new_amount-1))
-          ->condition('oiid', $order_item_id, '=')
-          ->execute();
-        $new_amount--;
-      }
-      elseif($new_amount == 1) {
-        db_delete('order_system_order_item')
-          ->condition('oiid', $order_item_id)
-          ->execute();
+      if ($oid) {
+        // Decrement ammount for current added to cart product
+        if ($amount > 1) {
+          db_update('order_system_order_item')
+            ->fields(array('amount' => $amount-1))
+            ->condition('oiid', $oiid, '=')->execute();
 
-        db_delete('order_system_orders')
-          ->condition('oid', $order_id)
-          ->execute();
-        $new_amount = 0;
+          db_update('order_system_orders')
+            ->fields(array('updated' => time()))
+            ->condition('oid', $oid, '=')->execute();
+        }
+        elseif($amount == 1) {
+          db_delete('order_system_order_item')
+            ->condition('oiid', $oiid, '=')->execute();
+        }
       }
     }
-    $form['add_to_cart_info']['#markup'] = '<p class="add-to-cart-info">' .
-      t('!amount items added to card.', array('!amount' => $new_amount)) . '</p>';
   }
-
-  $commands = array(
-    ajax_command_replace('#add-to-cart-wrapper', render($form['add_to_cart_info'])),
-  );
-
-  return array('#type' => 'ajax', '#commands' => $commands);
 }

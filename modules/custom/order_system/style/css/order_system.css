@@ -1,0 +1,13 @@
+/**
+  * @file
+  * CSS styles for order system module.
+*/
+
+#cart-wrapper table td div {
+  float: left;
+}
+
+#cart-wrapper table td div img {
+  width: 25px;
+  cursor: pointer;
+}
