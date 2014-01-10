@@ -151,7 +151,7 @@ function order_system_cart_view($form, &$form_state) {
 
     // Place order button was clicked
     if ($form_state['clicked_button']['#name'] == 'place_order') {
-      $fields = array('order_state' => 1, 'placed' => time());
+      $fields = array('order_state' => 'ready', 'placed' => time());
 
       $mail_notification_template = variable_get('order_system_mail_notification_template');
 
@@ -525,58 +525,80 @@ function order_system_block_info() {
 }
 
 /**
+ * Custom function for checking if user has "create an order" permission.
+ *
+ * @global type $user
+ * @return boolean
+ * Return boolean true/false. True for users who has permission and false for those
+ * who hasn't.
+ */
+function _order_system_create_order_permission() {
+  global $user;
+
+  $result = false;
+  // Get all user's permissions.
+  $permissions = user_role_permissions($user->roles);
+  if (!empty($permissions)) {
+    foreach ($permissions as $perm) {
+      $perm = array_keys($perm);
+      // Check if current user has permission to create an order, if not hide block.
+      if (in_array('create an order', $perm)) {
+        $result = true;
+      }
+    }
+  }
+  return $result;
+}
+
+/**
  * Implements hook_block_view().
  */
 function order_system_block_view($delta) {
   global $user, $language;
 
-  // Show these blocks only for those user who have "create an order" permission.
-  // Get all user's permissions.
-  $permissions = user_role_permissions($user->roles);
-  foreach ($permissions as $perm) {
-    $perm = array_keys($perm);
-    // Check if current user has permission to create an order, if not hide block.
-    if (!in_array('create an order', $perm)) {
-      return;
-    }
-  }
-
   $block = array();
-  if ($delta == 'order_system_add_to_cart') {
-    $content_types = variable_get('order_system_content_types', array());
+  $show_block = _order_system_create_order_permission();
 
-    if (arg(1)) {
-      $nid = arg(1);
-      $node = node_load($nid);
-    }
+  // Show these blocks only for those user who have "create an order" permission.
+  if ($show_block) {
+    if ($delta == 'order_system_add_to_cart') {
+      $content_types = variable_get('order_system_content_types', array());
 
-    foreach (array_values($content_types) as $type) {
-      if ($node->type === $type) {
-        $form = drupal_get_form('order_system_add_to_cart_form');
-        $block['subject'] = t('Add to cart');
-        $block['content'] = drupal_render($form);
+      if (arg(1)) {
+        $nid = arg(1);
+        $node = node_load($nid);
       }
+
+      if (!empty($content_types)) {
+        foreach (array_values($content_types) as $type) {
+          if ($node->type === $type) {
+            $form = drupal_get_form('order_system_add_to_cart_form');
+            $block['subject'] = t('Add to cart');
+            $block['content'] = drupal_render($form);
+          }
+        }
+      }
+
+    }
+    elseif ($delta == 'order_system_cart_info') {
+      // Get all items amount added to user's cart.
+      $order = _order_system_get_unplaced_order($user->uid);
+
+      $links = array();
+      $links['view'] = array(
+        'href' => url('cart/view', array('absolute' => TRUE)),
+        'title' => t('View cart'),
+        'language' => $language,
+        'attributes' => array('class' => array('view-cart')),
+      );
+      $text = t('There are !items items added in your cart.', array(
+        '!items' => $order['total_amount']
+      ));
+      $block['subject'] = t('Cart details');
+      $block['content'] = theme('links', array('links' => $links)) .
+        '<div id="view-cart-details-wrapper"><p>' . $text . '</p><div>';
     }
   }
-  elseif ($delta == 'order_system_cart_info') {
-    // Get all items amount added to user's cart.
-    $order = _order_system_get_unplaced_order($user->uid);
-
-    $links = array();
-    $links['view'] = array(
-      'href' => url('cart/view', array('absolute' => TRUE)),
-      'title' => t('View cart'),
-      'language' => $language,
-      'attributes' => array('class' => array('view-cart')),
-    );
-    $text = t('There are !items items added in your cart.', array(
-      '!items' => $order['total_amount']
-    ));
-    $block['subject'] = t('Cart details');
-    $block['content'] = theme('links', array('links' => $links)) .
-      '<div id="view-cart-details-wrapper"><p>' . $text . '</p><div>';
-  }
-
   return $block;
 }
 
@@ -675,7 +697,7 @@ function _order_system_get_unplaced_order($uid) {
     ->fields('oso', array('oid', 'uid'))
     ->fields('osoi', array('oiid', 'nid', 'amount'))
     ->condition('oso.uid', $uid, '=')
-    ->condition('oso.order_state', 0, '=');
+    ->condition('oso.order_state', 'new', '=');
   $order = $order->execute()->fetchAll();
 
   if (!empty($order)) {
