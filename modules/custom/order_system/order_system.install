@@ -90,13 +90,6 @@ function order_system_schema() {
         'default' => 0,
         'size' => 'tiny',
       ),
-      'order_state' => array(
-        'description' => 'A boolean indicating order state.',
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 0,
-        'size' => 'tiny',
-      ),
     ),
     'primary key' => array('oid'),
   );
@@ -109,6 +102,10 @@ function order_system_schema() {
  */
 function order_system_install() {
   global $user;
+
+  // Alter order_system_orders table, change order_state column type to enum.
+  db_query("ALTER TABLE {order_system_orders} ADD COLUMN "
+   . "order_state enum('new','feedback','ready','closed') NOT NULL default 'new'");
 
   // Prepare mail body
   $mail_body =
