@@ -5,9 +5,9 @@ core = 7.x
 configure = admin/config/user-interface/nice_menus
 
 
-; Information added by drush on 2013-12-16
+; Information added by drush on 2014-02-19
 version = "7.x-2.5"
 core = "7.x"
 project = "nice_menus"
-datestamp = "1387186138"
+datestamp = "1392805902"
 

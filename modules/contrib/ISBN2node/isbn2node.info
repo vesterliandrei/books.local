@@ -9,9 +9,9 @@ configure = admin/config/content/isbn2node
 
 
 
-; Information added by drush on 2013-12-16
+; Information added by drush on 2014-02-19
 version = "7.x-1.3"
 core = "7.x"
 project = "ISBN2node"
-datestamp = "1387186160"
+datestamp = "1392805970"
 

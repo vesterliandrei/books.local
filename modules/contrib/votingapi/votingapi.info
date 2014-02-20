@@ -11,9 +11,9 @@ files[] = views/votingapi_views_handler_sort_nullable.inc
 files[] = views/votingapi_views_handler_relationship.inc
 
 
-; Information added by drush on 2013-12-17
+; Information added by drush on 2014-02-19
 version = "7.x-2.11"
 core = "7.x"
 project = "votingapi"
-datestamp = "1387272838"
+datestamp = "1392805766"
 

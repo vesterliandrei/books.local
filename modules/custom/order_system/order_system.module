@@ -276,45 +276,41 @@ function order_system_view_orders() {
     '#tree' => TRUE,
     '#theme' => 'view_orders_table'
   );
-  $order = _order_system_get_orders(); // Get full unplaced order.
+  $order = _order_system_get_orders(); // Get all orders list.
 
-  if (!empty($order['items'])) {
-    foreach ($order['items'] as $order_item) {
+  if (!empty($order)) {
+    foreach ($order as $order_item) {
+      // print '<pre>';
+      // print_r($order_item);
+      // print '</pre>';
       // Get product object
-      $product = node_load($order_item->nid);
-      $form['order'][$order_item->oiid] = array(
+      $form['orders'][$order_item['oid']] = array(
         '#type' => 'fieldset',
         '#collapsible' => FALSE,
-        '#default_value' => $order_item->amount,
-        'amount' => array(
-          '#type' => 'textfield',
-          '#default_value' => $order_item->amount,
-          '#size' => 3,
-        ),
-        'title' => array(
-          '#type' => 'value',
-          '#value' => $product->title
-        ),
+        '#default_value' => $order_item['total_amount'],
+        '#title' => $order_item['oid'],
       );
+
+      // Generate order items rows from current order object.
+      foreach ($order_item['items'] as $item) {
+        $form['orders'][$order_item['oid']][] = array(
+          '#type' => 'textfield',
+          '#default_value' => $item['amount'],
+          '#size' => 3,
+        );
+      }
     }
 
-    $form['order']['place_order'] = array(
-      '#type' => 'button',
-      '#name' => 'place_order',
-      '#value' => t('Place order'),
-      '#extra_data' => array('oid' => $order_item->oid),
-      '#ajax' => array(
-        'callback' => '_order_system_update_amount',
-        'wrapper' => 'cart-wrapper',
-      ),
-    );
+    // print '<pre>';
+    // print_r($form);
+    // print '</pre>';
 
-    $form['order']['update'] = array(
+    $form['orders']['update'] = array(
       '#type' => 'button',
       '#attributes' => array('class' => array('element-invisible'),),
       '#value' => t('Update'),
       '#name' => 'update',
-      '#extra_data' => array('oid' => $order_item->oid),
+      '#extra_data' => array('oid' => 1),
       '#ajax' => array(
         'callback' => '_order_system_update_amount',
         'wrapper' => 'cart-wrapper',
@@ -331,10 +327,45 @@ function order_system_view_orders() {
   else {
     // Return empty text in case there is no active order for current user.
     $empty_text = t('There are no products added to your cart.');
-    $form['order']['empty_text'] = array('#markup' => $empty_text);
+    $form['orders']['empty_text'] = array('#markup' => $empty_text);
   }
 
   return $form;
+}
+
+/**
+* Get all orders list function.
+*/
+function _order_system_get_orders() {
+  // Declare results array.
+  $result = array();
+
+  // Get all orders.
+  $orders = db_select('order_system_orders', 'oso');
+  $orders->Join('order_system_order_item', 'osoi', 'osoi.oid = oso.oid');
+  $orders
+    ->fields('oso', array('oid', 'uid'))
+    ->fields('osoi', array('oiid', 'nid', 'amount'));
+  $orders = $orders->execute()->fetchAll();
+
+  // Check if orders array data is not empty.
+  if (count($orders)) {
+    foreach ($orders as $order) {
+      // Set default total amount value 0 if is not set yet.
+      if (!isset($result[$order->oid]['total_amount'])) {
+        $result[$order->oid]['total_amount'] = 0;
+      }
+      $result[$order->oid]['total_amount'] += $order->amount;
+      $result[$order->oid]['oid'] = $order->oid;
+      $result[$order->oid]['items'][] = array(
+        'oiid' => $order->oiid,
+        'nid' => $order->nid,
+        'amount' => $order->amount,
+      );
+    }
+  }
+
+  return $result;
 }
 
 /**

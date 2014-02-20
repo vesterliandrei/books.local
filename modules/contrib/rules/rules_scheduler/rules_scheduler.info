@@ -14,9 +14,9 @@ files[] = includes/rules_scheduler.views.inc
 files[] = includes/rules_scheduler_views_filter.inc
 
 
-; Information added by drush on 2013-12-16
+; Information added by drush on 2014-02-19
 version = "7.x-2.6"
 core = "7.x"
 project = "rules"
-datestamp = "1387186128"
+datestamp = "1392805877"
 

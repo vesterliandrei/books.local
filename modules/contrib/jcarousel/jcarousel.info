@@ -8,9 +8,9 @@ files[] = includes/jcarousel.views.inc
 files[] = includes/jcarousel_style_plugin.inc
 
 
-; Information added by drush on 2013-12-16
+; Information added by drush on 2014-02-19
 version = "7.x-2.6"
 core = "7.x"
 project = "jcarousel"
-datestamp = "1387186156"
+datestamp = "1392805965"
 

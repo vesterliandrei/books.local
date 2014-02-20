@@ -12,8 +12,8 @@ files[] = includes/maillog_handler_field_maillog_entry_link_delete.inc
 files[] = includes/maillog_handler_field_maillog_link_delete.inc
 
 
-; Information added by drush on 2013-12-16
+; Information added by drush on 2014-02-19
 version = ""
 project = "maillog"
-datestamp = "1387186143"
+datestamp = "1392805933"
 

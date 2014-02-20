@@ -9,9 +9,9 @@ configure = admin/structure/field-collections
 package = Fields
 
 
-; Information added by drush on 2013-12-16
+; Information added by drush on 2014-02-19
 version = "7.x-1.0-beta5"
 core = "7.x"
 project = "field_collection"
-datestamp = "1387186163"
+datestamp = "1392806006"
 

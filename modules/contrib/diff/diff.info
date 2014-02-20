@@ -5,9 +5,9 @@ core = 7.x
 files[] = DiffEngine.php
 
 
-; Information added by drush on 2013-12-16
+; Information added by drush on 2014-02-19
 version = "7.x-3.2"
 core = "7.x"
 project = "diff"
-datestamp = "1387186187"
+datestamp = "1392806036"
 
