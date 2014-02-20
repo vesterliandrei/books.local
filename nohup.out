@@ -1,0 +1,4 @@
+ifdown: interface eth0 not configured
+Ignoring unknown interface eth0=eth0.
+ifdown: interface eth0 not configured
+Ignoring unknown interface eth0=eth0.
