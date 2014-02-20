@@ -8,12 +8,21 @@ api = 2
 
 ; modules
 
+projects[autoassignrole][subdir] = contrib
+projects[autoassignrole][download][type] = "git"
+projects[autoassignrole][download][url] = "http://git.drupal.org/project/autoassignrole.git"
+projects[autoassignrole][download][tag] = "7.x-1.0-beta1"
+
+projects[coder][subdir] = contrib
+projects[coder][download][type] = "git"
+projects[coder][download][url] = "http://git.drupal.org/project/coder.git"
+projects[coder][download][tag] = "7.x-2.0"
+
 projects[ctools][subdir] = contrib
 projects[ctools][download][type] = "git"
 projects[ctools][download][url] = "http://git.drupal.org/project/ctools.git"
 projects[ctools][download][tag] = "7.x-1.3"
 projects[ctools][patch][] = https://drupal.org/files/1301908-language-contexts-6.patch
-projects[ctools][patch][] = https://drupal.org/files/page-manager-language-support.patch
 
 projects[diff][subdir] = contrib
 projects[diff][download][type] = "git"
@@ -30,11 +39,6 @@ projects[entityreference][download][type] = "git"
 projects[entityreference][download][url] = "http://git.drupal.org/project/entityreference.git"
 projects[entityreference][download][tag] = "7.x-1.1"
 
-projects[autoassignrole][subdir] = contrib
-projects[autoassignrole][download][type] = "git"
-projects[autoassignrole][download][url] = "http://git.drupal.org/project/autoassignrole.git"
-projects[autoassignrole][download][tag] = "7.x-1.0-beta1"
-
 projects[features][subdir] = contrib
 projects[features][download][type] = "git"
 projects[features][download][url] = "http://git.drupal.org/project/features.git"
@@ -44,11 +48,6 @@ projects[features_extra][subdir] = contrib
 projects[features_extra][download][type] = "git"
 projects[features_extra][download][url] = "http://git.drupal.org/project/features_extra.git"
 projects[features_extra][download][tag] = "7.x-1.0-beta1"
-
-projects[coder][subdir] = contrib
-projects[coder][download][type] = "git"
-projects[coder][download][url] = "http://git.drupal.org/project/coder.git"
-projects[coder][download][tag] = "7.x-2.0"
 
 projects[favorites][subdir] = contrib
 projects[favorites][download][type] = "git"
@@ -80,15 +79,25 @@ projects[jquery_update][download][type] = "git"
 projects[jquery_update][download][url] = "http://git.drupal.org/project/jquery_update.git"
 projects[jquery_update][download][tag] = "7.x-2.3"
 
-projects[votingapi][subdir] = contrib
-projects[votingapi][download][type] = "git"
-projects[votingapi][download][url] = "http://git.drupal.org/project/votingapi.git"
-projects[votingapi][download][tag] = "7.x-2.11"
+projects[l10n_update][subdir] = contrib
+projects[l10n_update][download][type] = "git"
+projects[l10n_update][download][url] = "http://git.drupal.org/project/l10n_update.git"
+projects[l10n_update][download][tag] = "7.x-1.0-beta3"
 
 projects[maillog][subdir] = contrib
 projects[maillog][download][type] = "git"
 projects[maillog][download][url] = "http://git.drupal.org/project/maillog.git"
 projects[maillog][download][branch] = "7.x-1.x"
+
+projects[mailsystem][subdir] = contrib
+projects[mailsystem][download][type] = "git"
+projects[mailsystem][download][url] = "http://git.drupal.org/project/mailsystem.git"
+projects[mailsystem][download][branch] = "7.x-2.34"
+
+projects[metatag][subdir] = contrib
+projects[metatag][download][type] = "git"
+projects[metatag][download][url] = "http://git.drupal.org/project/metatag.git"
+projects[metatag][download][tag] = "7.x-1.0-beta7"
 
 projects[mimemail][subdir] = contrib
 projects[mimemail][download][type] = "git"
@@ -105,20 +114,20 @@ projects[panels][download][type] = "git"
 projects[panels][download][url] = "http://git.drupal.org/project/panels.git"
 projects[panels][download][tag] = "7.x-3.3"
 
-projects[l10n_update][subdir] = contrib
-projects[l10n_update][download][type] = "git"
-projects[l10n_update][download][url] = "http://git.drupal.org/project/l10n_update.git"
-projects[l10n_update][download][tag] = "7.x-1.0-beta3"
-
-projects[metatag][subdir] = contrib
-projects[metatag][download][type] = "git"
-projects[metatag][download][url] = "http://git.drupal.org/project/metatag.git"
-projects[metatag][download][tag] = "7.x-1.0-beta7"
-
 projects[pathauto][subdir] = contrib
 projects[pathauto][download][type] = "git"
 projects[pathauto][download][url] = "http://git.drupal.org/project/pathauto.git"
 projects[pathauto][download][tag] = "7.x-1.2"
+
+projects[quicktabs][subdir] = contrib
+projects[quicktabs][download][type] = "git"
+projects[quicktabs][download][url] = "http://git.drupal.org/project/quicktabs.git"
+projects[quicktabs][download][tag] = "7.x-3.6"
+
+projects[rate][subdir] = contrib
+projects[rate][download][type] = "git"
+projects[rate][download][url] = "http://git.drupal.org/project/rate.git"
+projects[rate][download][tag] = "7.x-1.7"
 
 projects[rules][subdir] = contrib
 projects[rules][download][type] = "git"
@@ -144,6 +153,11 @@ projects[views][subdir] = contrib
 projects[views][download][type] = "git"
 projects[views][download][url] = "http://git.drupal.org/project/views.git"
 projects[views][download][tag] = "7.x-3.7"
+
+projects[votingapi][subdir] = contrib
+projects[votingapi][download][type] = "git"
+projects[votingapi][download][url] = "http://git.drupal.org/project/votingapi.git"
+projects[votingapi][download][tag] = "7.x-2.11"
 
 projects[webform][subdir] = contrib
 projects[webform][download][type] = "git"
