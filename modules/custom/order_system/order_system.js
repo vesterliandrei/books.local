@@ -27,9 +27,9 @@
         jQuery('input[name="update"]').mousedown();
       });
     };
-    
+
     Drupal.cart_page_operations();
-    
+
     // Execute same function after ajax handler submit.
     if (Drupal.ajax) {
       Drupal.ajax.prototype.commands.cart_page_operations = function(ajax, response, status) {

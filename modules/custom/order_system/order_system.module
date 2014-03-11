@@ -29,8 +29,8 @@ function order_system_menu() {
   $items['admin/config/system/order_system'] = array(
     'title' => 'Administer order system',
     'description' => 'Here you can administer order system. View orders in details, Delete orders or print them.',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('order_system_view_orders'),
+    'page callback' => 'order_system_view_orders',
+    // 'page arguments' => array('order_system_view_orders'),
     'access arguments' => array('administer order system'),
   );
 
@@ -79,10 +79,9 @@ function order_system_menu() {
 /**
  * Implements hook_theme().
  */
-function order_system_theme($existing, $type, $theme, $path) {
+function order_system_theme() {
   return array(
     'cart_view_table' => array('render element' => 'element'),
-    'view_orders_table' => array('render element' => 'element'),
   );
 }
 
@@ -129,10 +128,6 @@ function theme_cart_view_table($vars) {
     // Return empty help text in case there are no items in the current order.
     return render($element['empty_text']);
   }
-}
-
-function theme_view_orders_table($vars) {
-
 }
 
 /**
@@ -260,110 +255,354 @@ function order_system_cart_view($form, &$form_state) {
 function _order_system_update_amount($form, &$form_state) {
   $commands = array();
   $commands[] = ajax_command_replace('#cart-wrapper', render($form['order']));
-	$commands[] = array('command' => 'cart_page_operations');
+  $commands[] = array('command' => 'cart_page_operations');
 
-	return array('#type' => 'ajax', '#commands' => $commands);
+  return array('#type' => 'ajax', '#commands' => $commands);
+}
+
+/**
+ * Update order state ajax callback process.
+ */
+function _order_system_update_order_state($form, &$form_state) {
+  $commands = array();
+  $commands[] = ajax_command_replace('#order-state-wrapper', render($form['order_states']));
+
+  return array('#type' => 'ajax', '#commands' => $commands);
+}
+
+/**
+* Function for displaing form on view orders table for updatind amount.
+* This for updated speciffic order item only.
+*
+* @param $form array
+*   Form array. Includes all form elements.
+* @param $form_state array
+*   Form state array datta. Contains submitted data after form submit.
+* @param $amount integer
+*   Additional param for setting default amount value for textfield.
+* @param $oiid integer
+*   Order item id value.
+* @param $oid integer
+*   Order id value.
+*/
+function order_system_orders_operation_form($form, &$form_state, $amount, $oid, $oiid) {
+  $form = array();
+
+  // Ajax submit update button process.
+  if (isset($form_state['values'])) {
+    // Delete order item button was clicked
+    if ($form_state['clicked_button']['#name'] == 'delete') {
+      db_delete('order_system_order_item')
+        ->condition('oiid', $oiid, '=')->execute();
+      // Update current order updated time.
+      db_update('order_system_orders')
+        ->fields(array('updated' => time()))
+        ->condition('oid', $oid, '=')->execute();
+    }
+    else {
+      // Update order item amount button was clicked.
+      // Get new amount textfield value and set it into db.
+      if ($form_state['values']['amount']) {
+        db_update('order_system_order_item')
+          ->fields(array('amount' => $form_state['values']['amount']))
+          ->condition('oiid', $oiid, '=')->execute();
+        // Update current order updated time.
+        db_update('order_system_orders')
+          ->fields(array('updated' => time()))
+          ->condition('oid', $oid, '=')->execute();
+      }
+    }
+  }
+
+  $form['amount'] = array(
+    '#type' => 'textfield',
+    '#default_value' => $amount,
+    '#size' => 2
+  );
+
+  // Formate operarions buttons.
+  $form['update'] = array(
+    '#prefix' => '<div id="op-wrapper">',
+    '#type' => 'button',
+    '#name' => 'update',
+    '#value' => t('update'),
+    '#ajax' => array(
+      'callback' => '_order_system_update_amount',
+      'wrapper' => 'cart-wrapper',
+    ),
+  );
+
+  $form['delete'] = array(
+    '#suffix' => '</div>',
+    '#type' => 'button',
+    '#name' => 'delete',
+    '#value' => t('delete'),
+    '#ajax' => array(
+      'callback' => '_order_system_update_amount',
+      'wrapper' => 'cart-wrapper',
+    ),
+  );
+
+  return $form;
+}
+
+/**
+* Function for displaing form on view orders table the list or order states.
+* Default selected value is order's state.
+*
+* @param $form array
+*   Form array. Includes all form elements.
+* @param $form_state array
+*   Form state array datta. Contains submitted data after form submit.
+* @param $order_state string
+*   Additional param for setting default order state in order state list.
+* @param $oid integer
+*   Order id value.
+*/
+function order_system_status_list_form($form, &$form_state, $order_state, $oid) {
+  $form = array();
+
+  if (isset($form_state['values'])) {
+    $order_state = $form_state['values']['order_states'];
+    // Update current order updated time.
+    db_update('order_system_orders')
+      ->fields(array('updated' => time(), 'order_state' => $order_state))
+      ->condition('oid', $oid, '=')->execute();
+  }
+
+  // Formate order states list.
+  $order_state_list = array(
+    'new' => 'new',
+    'feedback' => 'feedback',
+    'ready' => 'ready',
+    'closed' => 'closed'
+  );
+
+  $form['order_states'] = array(
+    '#prefix' => '<div id="order-state-wrapper">',
+    '#suffix' => '</div>',
+    '#type' => 'select',
+    '#options' => $order_state_list,
+    '#default_value' => $order_state,
+    '#ajax' => array(
+      'callback' => '_order_system_update_order_state',
+      'wrapper' => 'order-state-wrapper',
+    ),
+  );
+
+  return $form;
+}
+
+
+/**
+* Function for displaing a filter form on view orders page.
+*
+* @param $form array
+*   Form array. Includes all form elements.
+* @param $form_state array
+*   Form state array datta. Contains submitted data after form submit.
+*/
+function order_system_view_order_filters($form, &$form_state) {
+  $form = array();
+
+  if (isset($form_state['values'])) {
+    // Get clicked button name.
+    $clicked_button = $form_state['clicked_button']['#name'];
+    $params = array();
+
+    if ($clicked_button == 'apply') {
+      // Add filter form params as GET params in the url.
+      $params = array('query' => array());
+      if ($form_state['values']['oid']) {
+        $params['query']['oid'] = $form_state['values']['oid'];
+      }
+      if ($form_state['values']['order_state']) {
+        $params['query']['order_state'] = $form_state['values']['order_state'];
+      }
+      if ($form_state['values']['created']) {
+        $params['query']['created'] = $form_state['values']['created'];
+      }
+      if ($form_state['values']['updated']) {
+        $params['query']['updated'] = $form_state['values']['updated'];
+      }
+    }
+    // Make redirect to the current url with GET params included.
+    drupal_goto($_GET['q'], $params);
+  }
+
+  // Add filters container inline.
+  $form['filters'] = array(
+    '#type' => 'fieldset',
+    '#prefix' => '<div class="container-inline">',
+    '#suffix' => '</div>',
+  );
+  // Set filter by order number.
+  $form['filters']['oid'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Order number'),
+    '#default_value' => (isset($_GET['oid']) ? $_GET['oid'] : null),
+    '#size' => 2
+  );
+  // Formate order states list.
+  $order_state_list = array(
+    'new' => 'new',
+    'feedback' => 'feedback',
+    'ready' => 'ready',
+    'closed' => 'closed'
+  );
+  // Formate order state list filter.
+  $form['filters']['order_state'] = array(
+    '#type' => 'select',
+    '#options' => $order_state_list,
+    '#default_value' => 1,
+  );
+  // Formate created date popup field.
+  $dateformat = 'Y-m-d';
+  $value = null;
+  $form['filters']['created'] = array(
+    '#title' => t('Created'),
+    '#type' => 'date_popup',
+    '#date_label_position' => 'hidden',
+    '#date_timezone' => date_default_timezone(),
+    '#date_format' => $dateformat,
+    '#date_year_range' => '-3:+3',
+    '#label' => t('Created'),
+    '#default_value' => (isset($_GET['created']) ? $_GET['created'] : null),
+  );
+  // Formate updated date popup field.
+  $form['filters']['updated'] = array(
+    '#title' => t('Updated'),
+    '#type' => 'date_popup',
+    '#date_label_position' => 'hidden',
+    '#date_timezone' => date_default_timezone(),
+    '#date_format' => $dateformat,
+    '#date_year_range' => '-3:+3',
+    '#label' => t('Updated'),
+    '#default_value' => (isset($_GET['updated']) ? $_GET['updated'] : null),
+  );
+  // Add apply filter button.
+  $form['filters']['apply'] = array(
+    '#type' => 'button',
+    '#name' => 'apply',
+    '#value' => t('Apply'),
+  );
+  // Add reset filter button.
+  $form['filters']['reset'] = array(
+    '#type' => 'button',
+    '#name' => 'reset',
+    '#value' => t('Reset'),
+  );
+
+  return $form;
 }
 
 /**
  * View orders table including all operations.
  */
 function order_system_view_orders() {
-  $form = array();
-  $form['view_orders'] = array(
-    '#prefix' => '<div id="orders-wrapper">',
-    '#suffix' => '</div>',
-    '#tree' => TRUE,
-    '#theme' => 'view_orders_table'
+  global $base_url;
+
+  // Formate table header.
+  $header = array(
+    array('data' => '#', 'field' => 'oso.oid'),
+    array('data' => t('Status'), 'field' => 'oso.order_state'),
+    array('data' => t('Order items')),
+    array('data' => t('Created'), 'field' => 'oso.created'),
+    array('data' => t('Updated'), 'field' => 'oso.updated'),
+    array('data' => t('Operations')),
   );
-  $order = _order_system_get_orders(); // Get all orders list.
+  $pager_limit = 5;
+  $orders = _order_system_get_orders($header, $pager_limit); // Get all orders list.
+  // Add table filter form.
+  $output = '';
+  $total = 0;
 
-  if (!empty($order)) {
-    foreach ($order as $order_item) {
-      // print '<pre>';
-      // print_r($order_item);
-      // print '</pre>';
-      // Get product object
-      $form['orders'][$order_item['oid']] = array(
-        '#type' => 'fieldset',
-        '#collapsible' => FALSE,
-        '#default_value' => $order_item['total_amount'],
-        '#title' => $order_item['oid'],
-      );
-
-      // Generate order items rows from current order object.
-      foreach ($order_item['items'] as $item) {
-        $form['orders'][$order_item['oid']][] = array(
-          '#type' => 'textfield',
-          '#default_value' => $item['amount'],
-          '#size' => 3,
-        );
-      }
+  $rows = array();
+  $rowspan = array();
+  foreach ($orders as $order) {
+    if (!isset($rowspan[$order->oid])) {
+      $rowspan[$order->oid] = 1;
+      $total++;
     }
-
-    // print '<pre>';
-    // print_r($form);
-    // print '</pre>';
-
-    $form['orders']['update'] = array(
-      '#type' => 'button',
-      '#attributes' => array('class' => array('element-invisible'),),
-      '#value' => t('Update'),
-      '#name' => 'update',
-      '#extra_data' => array('oid' => 1),
-      '#ajax' => array(
-        'callback' => '_order_system_update_amount',
-        'wrapper' => 'cart-wrapper',
-      ),
-    );
-
-    $form['#attached']['js'] = array(
-      array(
-        'type'  => 'file',
-        'data' => drupal_get_path('module', 'order_system') . '/order_system.js',
-      ),
-    );
+    else {
+      $rowspan[$order->oid]++;
+    }
   }
-  else {
-    // Return empty text in case there is no active order for current user.
-    $empty_text = t('There are no products added to your cart.');
-    $form['orders']['empty_text'] = array('#markup' => $empty_text);
+  $current_oid = 0;
+
+  foreach ($orders as $order_item) {
+    $cell = array();
+
+    if ($current_oid != $order_item->oid) {
+      // Formate order items list.
+      $cell[] = array('data' => $order_item->oid, 'rowspan' => $rowspan[$order_item->oid]);
+      // Set order state list with current order's state selected.
+      $cell[] = array(
+        'data' => drupal_get_form(
+          'order_system_status_list_form',
+          $order_item->order_state, // Current order state.
+          $order_item->oid          // Current order id.
+        ),
+        'rowspan' => $rowspan[$order_item->oid]
+      );
+      // Update current order id value.
+      $current_oid = $order_item->oid;
+    }
+    else {
+      // Update current order id value.
+      $current_oid = $order_item->oid;
+    }
+    // Set product title with link to the node.
+    $cell[] = array('data' => '<a href="' . $base_url . '/node/' . $order_item->nid . '">' . $order_item->title . '</a>');
+    // Set created date value.
+    $cell[] = array('data' => date('Y-m-d H:i:s', $order_item->created));
+    // Set last updated date value.
+    $cell[] = array('data' => date('Y-m-d H:i:s', $order_item->updated));
+    // Set operations buttons.
+    $cell[] = array(
+      'data' => drupal_get_form(
+        'order_system_orders_operation_form',
+        $order_item->amount,  // Current order item amount.
+        $order_item->oid,     // Current order id.
+        $order_item->oiid     // Current order item id.
+      )
+    );
+    // Set new table row.
+    $rows[] = array('data' => $cell);
   }
 
-  return $form;
+  //pager_default_initialize($total, $pager_limit, $element = 0);
+  $form = drupal_get_form('order_system_view_order_filters');
+  $output .= drupal_render($form);
+  $output .= theme('table', array('header' => $header, 'rows' => $rows, 'empty' => t("There are no orders.")));
+  $output .= theme('pager');
+
+  return $output;
 }
 
 /**
 * Get all orders list function.
 */
-function _order_system_get_orders() {
-  // Declare results array.
+function _order_system_get_orders($header, $limit) {
+  // Default results array.
   $result = array();
 
   // Get all orders.
   $orders = db_select('order_system_orders', 'oso');
   $orders->Join('order_system_order_item', 'osoi', 'osoi.oid = oso.oid');
+  $orders->Join('node', 'n', 'n.nid = osoi.nid');
   $orders
-    ->fields('oso', array('oid', 'uid'))
-    ->fields('osoi', array('oiid', 'nid', 'amount'));
-  $orders = $orders->execute()->fetchAll();
-
-  // Check if orders array data is not empty.
-  if (count($orders)) {
-    foreach ($orders as $order) {
-      // Set default total amount value 0 if is not set yet.
-      if (!isset($result[$order->oid]['total_amount'])) {
-        $result[$order->oid]['total_amount'] = 0;
-      }
-      $result[$order->oid]['total_amount'] += $order->amount;
-      $result[$order->oid]['oid'] = $order->oid;
-      $result[$order->oid]['items'][] = array(
-        'oiid' => $order->oiid,
-        'nid' => $order->nid,
-        'amount' => $order->amount,
-      );
-    }
-  }
+    // Add table paged extender.
+    ->fields('oso')
+    ->fields('n', array('title'))
+    ->fields('osoi', array('oiid', 'nid', 'amount'))
+    // Add table sort extender.
+    ->extend('PagerDefault')
+    ->limit($limit)
+    ->extend('TableSort')
+    // Add order by headers.
+    ->orderByHeader($header);
+  $result = $orders->execute()->fetchAll();
 
   return $result;
 }
